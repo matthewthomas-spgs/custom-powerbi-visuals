@@ -1,0 +1,60 @@
+{
+    "privileges": [
+        {
+            "name": "WebAccess",
+            "essential": true
+        }
+    ],
+    "dataRoles": [
+        {
+            "displayName": "Risk Label",
+            "name": "riskLabel",
+            "kind": "Grouping"
+        },
+        {
+            "displayName": "Consequence Rating",
+            "name": "riskConsequenceRating",
+            "kind": "Grouping",
+            "requiredTypes": [
+                {
+                    "integer": true
+                }
+            ]
+        },
+        {
+            "displayName": "Likelihood Rating",
+            "name": "riskLikelihoodRating",
+            "kind": "Grouping",
+            "requiredTypes": [
+                {
+                    "integer": true
+                }
+            ]
+        }
+    ],
+    "dataViewMappings": [
+        {
+           "table": {
+            "rows": {
+                "select": [
+                    {
+                        "bind": {
+                            "to": "riskLabel"
+                        }
+                    },
+                    {
+                        "bind": {
+                            "to": "riskConsequenceRating"
+                        }
+                    },
+                    {
+                        "bind": {
+                            "to": "riskLikelihoodRating"
+                        }
+                    }
+                ]
+            }
+           }
+        }
+    ]
+}
