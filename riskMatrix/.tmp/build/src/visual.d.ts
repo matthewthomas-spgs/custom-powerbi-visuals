@@ -36,6 +36,9 @@ export declare class Visual implements IVisual {
     private consequenceLabelFromIndex;
     private likelihoodLabelFromIndex;
     private findCellColour;
+    /**
+     * Best‑fit rectangular grid: picks (cols, rows) that fit usable area and maximize the minimum pitch.
+     */
     private calculateJitter;
     private renderChart;
     getFormattingModel(): powerbi.visuals.FormattingModel;

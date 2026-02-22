@@ -15,6 +15,12 @@ import DataView = powerbi.DataView;
 
 import { VisualFormattingSettingsModel } from "./settings";
 
+
+// Tunables (adjust to taste)
+const RADIUS_FACTOR = 0.10; // % of min(cellW, cellH) used for circle radius
+const GAP_FACTOR    = 0.3; // >= 0 : how much extra gap beyond diameter; 1.0 means 100% of radius as extra gap
+const INNER_PAD_FR  = 2; // how much inner padding (in radii) to keep away from cell border (both sides)
+
 interface Risk {
     category: string;
     consequenceIdx: number; // 1–5
@@ -256,95 +262,125 @@ export class Visual implements IVisual {
     }
         */
 
-    // REPLACE your calculateJitter with this version
+    /**
+     * Best‑fit rectangular grid: picks (cols, rows) that fit usable area and maximize the minimum pitch.
+     */
     private calculateJitter(
-        x: d3.ScaleBand<string>,
-        y: d3.ScaleBand<string>,
-        width: number,
-        height: number
+    x: d3.ScaleBand<string>,
+    y: d3.ScaleBand<string>,
+    _width: number,
+    _height: number
     ): Risk[] {
-        const cellGroups = d3.group(
-            this.risks,
-            d => `${d.consequenceIdx}-${d.likelihoodIdx}`
-        );
+    const groups = d3.group(this.risks, d => `${d.consequenceIdx}-${d.likelihoodIdx}`);
 
-        const cellW = Math.max(1, x.bandwidth());
-        const cellH = Math.max(1, y.bandwidth());
+    const cellW = Math.max(1, x.bandwidth());
+    const cellH = Math.max(1, y.bandwidth());
 
-        // Slightly smaller base radius to allow more breathing room between points
-        const baseRadius = Math.max(4, Math.min(cellW, cellH) * 0.10);
+    // Circle sizing
+    const radius = Math.max(4, Math.min(cellW, cellH) * RADIUS_FACTOR);
 
-        // Target spacing between centers (>= diameter gives no overlap)
-        const gap = Math.max(2, baseRadius * 0.6);
-        const pitchX = (baseRadius * 2) + gap;
-        const pitchY = (baseRadius * 2) + gap;
+    // Desired pitch between centers
+    const gap    = Math.max(2, radius * GAP_FACTOR);
+    const pitchX = (radius * 2) + gap;
+    const pitchY = (radius * 2) + gap;
 
-        // Inner padding so dots never touch the cell border
-        const innerPadX = Math.max(2, baseRadius + gap * 0.75);
-        const innerPadY = Math.max(2, baseRadius + gap * 0.75);
+    // Inner padding, measured in radii, converted to px
+    const innerPadX = Math.max(2, radius * INNER_PAD_FR);
+    const innerPadY = Math.max(2, radius * INNER_PAD_FR);
 
-        // Compute how many columns/rows we can fit
-        const usableW = Math.max(0, cellW - innerPadX * 2);
-        const usableH = Math.max(0, cellH - innerPadY * 2);
+    // Usable placement area
+    const usableW = Math.max(0, cellW - innerPadX * 2);
+    const usableH = Math.max(0, cellH - innerPadY * 2);
+
+    function bestGrid(n: number) {
+        // Upper bounds on how many we can fit at desired pitch
         const maxCols = Math.max(1, Math.floor(usableW / pitchX));
         const maxRows = Math.max(1, Math.floor(usableH / pitchY));
+        const maxCap  = maxCols * maxRows;
 
-        // Helper: generate center positions for n items in a grid, centered within the cell
-        function gridPositions(n: number): [number, number][] {
-            const positions: [number, number][] = [];
-            // If we can’t fit at least 1×1 with the current pitch, fallback to center
-            if (maxCols === 1 && maxRows === 1) {
-                for (let i = 0; i < n; i++) positions.push([0, 0]);
-                return positions;
-            }
+        // If desired pitch is too big, we’ll still try to fit as many as possible by relaxing pitch a bit.
+        // We’ll search feasible (cols,rows) where cols*rows >= n but cols<=ceil(usableW/(2r)), rows<=ceil(usableH/(2r))
+        const hardCols = Math.max(1, Math.floor(usableW / (radius * 2))); // the absolute max if gap→0
+        const hardRows = Math.max(1, Math.floor(usableH / (radius * 2)));
 
-            // Grow from 1..min(n, maxCols*maxRows)
-            const cols = Math.min(maxCols, Math.ceil(Math.sqrt(n)));
-            const rows = Math.min(maxRows, Math.ceil(n / cols));
+        // Search candidates around sqrt(n)
+        const candidates: Array<{cols:number; rows:number; pitch:number}> = [];
+        const maxColsTry = Math.max(1, Math.min(hardCols, Math.ceil(Math.sqrt(n)) + 6));
+        for (let cols = 1; cols <= maxColsTry; cols++) {
+        const rows = Math.max(1, Math.ceil(n / cols));
+        if (rows > hardRows) continue;
 
-            const gridW = (cols - 1) * pitchX;
-            const gridH = (rows - 1) * pitchY;
+        // Given cols/rows, compute the actual pitch we can afford to center the grid inside usable area
+        // We want the min pitch across X/Y to be as large as possible (maximize separation).
+        const actualPitchX = cols > 1 ? (usableW / (cols - 1)) : usableW; // single col → all at cx0
+        const actualPitchY = rows > 1 ? (usableH / (rows - 1)) : usableH;
 
-            // Center grid in cell
-            const cx0 = -gridW / 2;
-            const cy0 = -gridH / 2;
+        // The pitch can't be less than 2*radius (or dots overlap). Skip impossible grids.
+        if (actualPitchX < 2 * radius || actualPitchY < 2 * radius) continue;
 
-            // Fill in row-major order. If n exceeds capacity, we wrap (keeps determinism).
-            for (let i = 0; i < n; i++) {
-                const r = Math.floor(i / cols) % rows;
-                const c = i % cols;
-                positions.push([cx0 + c * pitchX, cy0 + r * pitchY]);
-            }
-            return positions;
+        const minPitch = Math.min(actualPitchX, actualPitchY);
+        candidates.push({ cols, rows, pitch: minPitch });
         }
 
-        const placed: Risk[] = [];
-
-        for (const [key, group] of cellGroups.entries()) {
-            const [cIdxStr, lIdxStr] = key.split("-");
-            const cIdx = Number(cIdxStr);
-            const lIdx = Number(lIdxStr);
-            const cLabel = this.consequenceLabelFromIndex(cIdx);
-            const lLabel = this.likelihoodLabelFromIndex(lIdx);
-            if (!cLabel || !lLabel) continue;
-
-            const pos = gridPositions(group.length);
-
-            for (let i = 0; i < group.length; i++) {
-                const g = group[i];
-                placed.push({
-                    ...g,
-                    consequenceLabel: cLabel,
-                    likelihoodLabel: lLabel,
-                    // Center of cell + offset from grid
-                    jitterX: pos[i][0],
-                    jitterY: pos[i][1],
-                    radius: baseRadius
-                });
-            }
+        if (candidates.length === 0) {
+        // Fallback: just pile them at center; later code will place them all at (0,0)
+        return { cols: 1, rows: Math.max(1, n), pitchX: 2 * radius, pitchY: 2 * radius };
         }
 
-        return placed;
+        // Pick the grid that maximizes the minimum pitch
+        candidates.sort((a, b) => b.pitch - a.pitch);
+        const best = candidates[0];
+
+        // Derive effective pitch (balanced) from usableW/H and best cols/rows
+        const effPitchX = best.cols > 1 ? (usableW / (best.cols - 1)) : usableW;
+        const effPitchY = best.rows > 1 ? (usableH / (best.rows - 1)) : usableH;
+
+        return { cols: best.cols, rows: best.rows, pitchX: effPitchX, pitchY: effPitchY };
+    }
+
+    function positionsFor(n: number, cols: number, rows: number, effPitchX: number, effPitchY: number): [number, number][] {
+        const gridW = (cols - 1) * effPitchX;
+        const gridH = (rows - 1) * effPitchY;
+        const cx0   = -gridW / 2;
+        const cy0   = -gridH / 2;
+
+        const pos: [number, number][] = [];
+        for (let i = 0; i < n; i++) {
+        const r = Math.floor(i / cols) % rows;
+        const c = i % cols;
+        pos.push([cx0 + c * effPitchX, cy0 + r * effPitchY]);
+        }
+        return pos;
+    }
+
+    const placed: Risk[] = [];
+
+    for (const [key, group] of groups.entries()) {
+        const [cIdxStr, lIdxStr] = key.split("-");
+        const cIdx = Number(cIdxStr);
+        const lIdx = Number(lIdxStr);
+        const cLabel = this.consequenceLabelFromIndex(cIdx);
+        const lLabel = this.likelihoodLabelFromIndex(lIdx);
+        if (!cLabel || !lLabel) continue;
+
+        const n = group.length;
+        const best = bestGrid(n);
+        const pos = positionsFor(n, best.cols, best.rows, best.pitchX, best.pitchY);
+
+        for (let i = 0; i < n; i++) {
+        const g = group[i];
+        placed.push({
+            ...g,
+            consequenceLabel: cLabel,
+            likelihoodLabel: lLabel,
+            jitterX: pos[i][0],
+            jitterY: pos[i][1],
+            radius
+        });
+        }
+    }
+
+    return placed;
     }
 
 
