@@ -8,12 +8,9 @@ export interface MatrixCell {
 
 export type MatrixData = MatrixCell[];
 
-let data: MatrixData;
-
 export function create_base_matrix(): MatrixData {
-    
 
-    data = [
+    return [
         { consequence: "Insignificant", likelihood: "Rare", colour: 0, risk: "Low" },
         { consequence: "Insignificant", likelihood: "Unlikely", colour: 0, risk: "Low" },
         { consequence: "Insignificant", likelihood: "Possible", colour: 0, risk: "Low" },
@@ -39,7 +36,5 @@ export function create_base_matrix(): MatrixData {
         { consequence: "Catastrophic", likelihood: "Possible", colour: 3, risk: "Extreme" },
         { consequence: "Catastrophic", likelihood: "Likely", colour: 3, risk: "Extreme" },
         { consequence: "Catastrophic", likelihood: "Almost Certain", colour: 3, risk: "Extreme" }
-    ]
-
-    return data;
+    ];
 }
