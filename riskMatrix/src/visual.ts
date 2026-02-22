@@ -185,6 +185,7 @@ export class Visual implements IVisual {
     }
 
     // calculate jitter
+    /*
     private calculateJitter(
         x: d3.ScaleBand<string>,
         y: d3.ScaleBand<string>,
@@ -200,8 +201,8 @@ export class Visual implements IVisual {
         const cellHeight = Math.max(1, y.bandwidth());
 
         // calculate circle radius
-        const baseRadius = Math.max(2, Math.min(cellWidth, cellHeight) * 0.12);
-        const paddingInCell = Math.max(1, Math.min(cellWidth, cellHeight) * 0.25);
+        const baseRadius = Math.max(2, Math.min(cellWidth, cellHeight) * 0.09);
+        const paddingInCell = Math.max(1, Math.min(cellWidth, cellHeight) * 0.35);
         const maxJitterX = (cellWidth / 2) - baseRadius - paddingInCell;
         const maxJitterY = (cellHeight / 2) - baseRadius - paddingInCell;
 
@@ -217,8 +218,9 @@ export class Visual implements IVisual {
                 for (let i = 0; i < k && placed < n; i++) {
                     const t = (i / k) * 2 * Math.PI;
                     const scale = (r + 1) / rings;
-                    const jx = Math.max(-maxJitterX, Math.min(maxJitterX, scale * maxJitterX * Math.cos(t)));
-                    const jy = Math.max(-maxJitterY, Math.min(maxJitterY, scale * maxJitterY * Math.sin(t)));
+                    const increaseSpreadFactor = 1.15;
+                    const jx = Math.max(-maxJitterX, Math.min(maxJitterX, increaseSpreadFactor * scale * maxJitterX * Math.cos(t)));
+                    const jy = Math.max(-maxJitterY, Math.min(maxJitterY, increaseSpreadFactor * scale * maxJitterY * Math.sin(t)));
                     positions.push([jx, jy]);
                     placed++;
                 }
@@ -251,6 +253,98 @@ export class Visual implements IVisual {
         }
 
         return jittered;
+    }
+        */
+
+    // REPLACE your calculateJitter with this version
+    private calculateJitter(
+        x: d3.ScaleBand<string>,
+        y: d3.ScaleBand<string>,
+        width: number,
+        height: number
+    ): Risk[] {
+        const cellGroups = d3.group(
+            this.risks,
+            d => `${d.consequenceIdx}-${d.likelihoodIdx}`
+        );
+
+        const cellW = Math.max(1, x.bandwidth());
+        const cellH = Math.max(1, y.bandwidth());
+
+        // Slightly smaller base radius to allow more breathing room between points
+        const baseRadius = Math.max(4, Math.min(cellW, cellH) * 0.10);
+
+        // Target spacing between centers (>= diameter gives no overlap)
+        const gap = Math.max(2, baseRadius * 0.6);
+        const pitchX = (baseRadius * 2) + gap;
+        const pitchY = (baseRadius * 2) + gap;
+
+        // Inner padding so dots never touch the cell border
+        const innerPadX = Math.max(2, baseRadius + gap * 0.75);
+        const innerPadY = Math.max(2, baseRadius + gap * 0.75);
+
+        // Compute how many columns/rows we can fit
+        const usableW = Math.max(0, cellW - innerPadX * 2);
+        const usableH = Math.max(0, cellH - innerPadY * 2);
+        const maxCols = Math.max(1, Math.floor(usableW / pitchX));
+        const maxRows = Math.max(1, Math.floor(usableH / pitchY));
+
+        // Helper: generate center positions for n items in a grid, centered within the cell
+        function gridPositions(n: number): [number, number][] {
+            const positions: [number, number][] = [];
+            // If we can’t fit at least 1×1 with the current pitch, fallback to center
+            if (maxCols === 1 && maxRows === 1) {
+                for (let i = 0; i < n; i++) positions.push([0, 0]);
+                return positions;
+            }
+
+            // Grow from 1..min(n, maxCols*maxRows)
+            const cols = Math.min(maxCols, Math.ceil(Math.sqrt(n)));
+            const rows = Math.min(maxRows, Math.ceil(n / cols));
+
+            const gridW = (cols - 1) * pitchX;
+            const gridH = (rows - 1) * pitchY;
+
+            // Center grid in cell
+            const cx0 = -gridW / 2;
+            const cy0 = -gridH / 2;
+
+            // Fill in row-major order. If n exceeds capacity, we wrap (keeps determinism).
+            for (let i = 0; i < n; i++) {
+                const r = Math.floor(i / cols) % rows;
+                const c = i % cols;
+                positions.push([cx0 + c * pitchX, cy0 + r * pitchY]);
+            }
+            return positions;
+        }
+
+        const placed: Risk[] = [];
+
+        for (const [key, group] of cellGroups.entries()) {
+            const [cIdxStr, lIdxStr] = key.split("-");
+            const cIdx = Number(cIdxStr);
+            const lIdx = Number(lIdxStr);
+            const cLabel = this.consequenceLabelFromIndex(cIdx);
+            const lLabel = this.likelihoodLabelFromIndex(lIdx);
+            if (!cLabel || !lLabel) continue;
+
+            const pos = gridPositions(group.length);
+
+            for (let i = 0; i < group.length; i++) {
+                const g = group[i];
+                placed.push({
+                    ...g,
+                    consequenceLabel: cLabel,
+                    likelihoodLabel: lLabel,
+                    // Center of cell + offset from grid
+                    jitterX: pos[i][0],
+                    jitterY: pos[i][1],
+                    radius: baseRadius
+                });
+            }
+        }
+
+        return placed;
     }
 
 
