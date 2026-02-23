@@ -5,8 +5,8 @@ import VisualConstructorOptions = powerbiVisualsApi.extensibility.visual.VisualC
 import DialogConstructorOptions = powerbiVisualsApi.extensibility.visual.DialogConstructorOptions;
 var powerbiKey: any = "powerbi";
 var powerbi: any = window[powerbiKey];
-var riskMatrixE6C2180271CC43D3B13A714F2455D1DE_DEBUG: IVisualPlugin = {
-    name: 'riskMatrixE6C2180271CC43D3B13A714F2455D1DE_DEBUG',
+var riskMatrixE6C2180271CC43D3B13A714F2455D1DE: IVisualPlugin = {
+    name: 'riskMatrixE6C2180271CC43D3B13A714F2455D1DE',
     displayName: 'RiskMatrix',
     class: 'Visual',
     apiVersion: '5.3.0',
@@ -27,6 +27,6 @@ var riskMatrixE6C2180271CC43D3B13A714F2455D1DE_DEBUG: IVisualPlugin = {
 if (typeof powerbi !== "undefined") {
     powerbi.visuals = powerbi.visuals || {};
     powerbi.visuals.plugins = powerbi.visuals.plugins || {};
-    powerbi.visuals.plugins["riskMatrixE6C2180271CC43D3B13A714F2455D1DE_DEBUG"] = riskMatrixE6C2180271CC43D3B13A714F2455D1DE_DEBUG;
+    powerbi.visuals.plugins["riskMatrixE6C2180271CC43D3B13A714F2455D1DE"] = riskMatrixE6C2180271CC43D3B13A714F2455D1DE;
 }
-export default riskMatrixE6C2180271CC43D3B13A714F2455D1DE_DEBUG;
+export default riskMatrixE6C2180271CC43D3B13A714F2455D1DE;

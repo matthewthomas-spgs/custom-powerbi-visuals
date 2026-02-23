@@ -1,1 +1,26 @@
-{"visual":{"name":"riskMatrix","displayName":"RiskMatrix","guid":"riskMatrixE6C2180271CC43D3B13A714F2455D1DE","visualClassName":"Visual","version":"1.0.0.0","description":"","supportUrl":"","gitHubUrl":""},"apiVersion":"5.3.0","author":{"name":"","email":""},"assets":{"icon":"assets/icon.png"},"externalJS":null,"style":"style/visual.less","capabilities":"capabilities.json","dependencies":null,"stringResources":[],"version":"1.0.0.0"}
+{
+    "visual": {
+        "name": "riskMatrix",
+        "displayName": "RiskMatrix",
+        "guid": "riskMatrixE6C2180271CC43D3B13A714F2455D1DE",
+        "visualClassName": "Visual",
+        "version": "1.0.0.0",
+        "description": "",
+        "supportUrl": "",
+        "gitHubUrl": "https://github.com/matthewthomas-spgs/custom-powerbi-visuals"
+    },
+    "apiVersion": "5.3.0",
+    "author": {
+        "name": "Matthew Thomas",
+        "email": "matthew.thomas@stpauls.nsw.edu.au"
+    },
+    "assets": {
+        "icon": "assets/matrix.png"
+    },
+    "externalJS": null,
+    "style": "style/visual.less",
+    "capabilities": "capabilities.json",
+    "dependencies": null,
+    "stringResources": [],
+    "version": "1.0.0.0"
+}
