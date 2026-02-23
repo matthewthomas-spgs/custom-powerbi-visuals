@@ -31,7 +31,6 @@ const INNER_PAD_FR  = 2; // how much inner padding (in radii) to keep away from 
 
 interface Risk {
     category: string;
-    risk_name: string;
     consequenceIdx: number; // 1–5
     likelihoodIdx: number;  // 1–5
     rowIndex?: number;
@@ -97,10 +96,6 @@ private tooltipCategoryCols: powerbi.DataViewCategoryColumn[] = [];
             {
                 displayName: "Consequence", 
                 value: d.consequenceLabel ?? String(d.consequenceIdx)
-            },
-            {
-                displayName: "Name",
-                value: d.risk_name
             }
         ];
 
@@ -248,7 +243,6 @@ private tooltipCategoryCols: powerbi.DataViewCategoryColumn[] = [];
 
             return {
                 category: label != null ? String(label) : "N/A",
-                risk_name: "placeholder",
                 consequenceIdx: cIdx,
                 likelihoodIdx: lIdx,
                 selectionId,
@@ -275,78 +269,6 @@ private tooltipCategoryCols: powerbi.DataViewCategoryColumn[] = [];
         const col = this.colourPalette.getColor(chosenKey);
         return col?.value
     }
-
-    // calculate jitter
-    /*
-    private calculateJitter(
-        x: d3.ScaleBand<string>,
-        y: d3.ScaleBand<string>,
-        width: number,
-        height: number
-    ): Risk[] {
-        const cellGroups = d3.group(
-            this.risks,
-            d => `${d.consequenceIdx}-${d.likelihoodIdx}`
-        );
-
-        const cellWidth = Math.max(1, x.bandwidth());
-        const cellHeight = Math.max(1, y.bandwidth());
-
-        // calculate circle radius
-        const baseRadius = Math.max(2, Math.min(cellWidth, cellHeight) * 0.09);
-        const paddingInCell = Math.max(1, Math.min(cellWidth, cellHeight) * 0.35);
-        const maxJitterX = (cellWidth / 2) - baseRadius - paddingInCell;
-        const maxJitterY = (cellHeight / 2) - baseRadius - paddingInCell;
-
-        // Helper to distribute n points in rings within available jitter box
-        function jitterPositions(n: number): [number, number][] {
-            if (n <= 1) return [[0, 0]];
-            const positions: [number, number][] = [];
-            const rings = Math.ceil(Math.sqrt(n));
-            let placed = 0;
-
-            for (let r = 0; r < rings && placed < n; r++) {
-                const k = r === 0 ? 1 : Math.ceil(2 * Math.PI * (r + 1));
-                for (let i = 0; i < k && placed < n; i++) {
-                    const t = (i / k) * 2 * Math.PI;
-                    const scale = (r + 1) / rings;
-                    const increaseSpreadFactor = 1.15;
-                    const jx = Math.max(-maxJitterX, Math.min(maxJitterX, increaseSpreadFactor * scale * maxJitterX * Math.cos(t)));
-                    const jy = Math.max(-maxJitterY, Math.min(maxJitterY, increaseSpreadFactor * scale * maxJitterY * Math.sin(t)));
-                    positions.push([jx, jy]);
-                    placed++;
-                }
-            }
-            return positions;
-        }
-
-        const jittered: Risk[] = [];
-
-        for (const [key, group] of cellGroups.entries()) {
-            const [cIdxStr, lIdxStr] = key.split("-");
-            const cIdx = Number(cIdxStr);
-            const lIdx = Number(lIdxStr);
-            const cLabel = this.consequenceLabelFromIndex(cIdx);
-            const lLabel = this.likelihoodLabelFromIndex(lIdx);
-            if (!cLabel || !lLabel) continue;
-
-            const pos = jitterPositions(group.length);
-            for (let i = 0; i < group.length; i++) {
-                const g = group[i];
-                jittered.push({
-                    ...g,
-                    consequenceLabel: cLabel,
-                    likelihoodLabel: lLabel,
-                    jitterX: pos[i][0],
-                    jitterY: pos[i][1],
-                    radius: baseRadius
-                });
-            }
-        }
-
-        return jittered;
-    }
-        */
 
     /**
      * Best‑fit rectangular grid: picks (cols, rows) that fit usable area and maximize the minimum pitch.
@@ -523,13 +445,20 @@ private tooltipCategoryCols: powerbi.DataViewCategoryColumn[] = [];
         this.axesG.selectAll("*").remove();
 
         this.axesG.append("g")
+            .attr("class", "y-axis")
+            .call(d3.axisLeft(y));
+        
+        this.axesG.selectAll(".tick text")
+            .attr("dy", null)
+            .attr("transform", "translate(-15, -6) rotate(-90)")
+            .style("text-anchor", "middle")
+            .attr("alignment-baseline", "middle")
+            .style("dominant-baseline", "central");
+
+        this.axesG.append("g")
             .attr("class", "x-axis")
             .attr("transform", `translate(0, ${height})`)
             .call(d3.axisBottom(x));
-
-        this.axesG.append("g")
-            .attr("class", "y-axis")
-            .call(d3.axisLeft(y));
 
         const cells = this.cellsG
             .selectAll<SVGRectElement, MatrixCell>("rect.cell")
@@ -602,7 +531,8 @@ private tooltipCategoryCols: powerbi.DataViewCategoryColumn[] = [];
 
         const labelsSel = this.labelsG
             .selectAll<SVGTextElement, Risk>("text.risk-label")
-            .data(showLabels ? jitteredRisks : [], (d: any) => `${d.category}-${d.consequenceIdx}-${d.likelihoodIdx}`);
+            .data(showLabels ? jitteredRisks : [], (d: any) => `${d.category}-${d.consequenceIdx}-${d.likelihoodIdx}`)
+            .attr("transform", "rotate(-90)");
 
         labelsSel.join(
             enter => enter.append("text")

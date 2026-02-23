@@ -86,3 +86,75 @@ private calculateJitter(
   }
   return placed;
 }
+
+// calculate jitter
+    /*
+    private calculateJitter(
+        x: d3.ScaleBand<string>,
+        y: d3.ScaleBand<string>,
+        width: number,
+        height: number
+    ): Risk[] {
+        const cellGroups = d3.group(
+            this.risks,
+            d => `${d.consequenceIdx}-${d.likelihoodIdx}`
+        );
+
+        const cellWidth = Math.max(1, x.bandwidth());
+        const cellHeight = Math.max(1, y.bandwidth());
+
+        // calculate circle radius
+        const baseRadius = Math.max(2, Math.min(cellWidth, cellHeight) * 0.09);
+        const paddingInCell = Math.max(1, Math.min(cellWidth, cellHeight) * 0.35);
+        const maxJitterX = (cellWidth / 2) - baseRadius - paddingInCell;
+        const maxJitterY = (cellHeight / 2) - baseRadius - paddingInCell;
+
+        // Helper to distribute n points in rings within available jitter box
+        function jitterPositions(n: number): [number, number][] {
+            if (n <= 1) return [[0, 0]];
+            const positions: [number, number][] = [];
+            const rings = Math.ceil(Math.sqrt(n));
+            let placed = 0;
+
+            for (let r = 0; r < rings && placed < n; r++) {
+                const k = r === 0 ? 1 : Math.ceil(2 * Math.PI * (r + 1));
+                for (let i = 0; i < k && placed < n; i++) {
+                    const t = (i / k) * 2 * Math.PI;
+                    const scale = (r + 1) / rings;
+                    const increaseSpreadFactor = 1.15;
+                    const jx = Math.max(-maxJitterX, Math.min(maxJitterX, increaseSpreadFactor * scale * maxJitterX * Math.cos(t)));
+                    const jy = Math.max(-maxJitterY, Math.min(maxJitterY, increaseSpreadFactor * scale * maxJitterY * Math.sin(t)));
+                    positions.push([jx, jy]);
+                    placed++;
+                }
+            }
+            return positions;
+        }
+
+        const jittered: Risk[] = [];
+
+        for (const [key, group] of cellGroups.entries()) {
+            const [cIdxStr, lIdxStr] = key.split("-");
+            const cIdx = Number(cIdxStr);
+            const lIdx = Number(lIdxStr);
+            const cLabel = this.consequenceLabelFromIndex(cIdx);
+            const lLabel = this.likelihoodLabelFromIndex(lIdx);
+            if (!cLabel || !lLabel) continue;
+
+            const pos = jitterPositions(group.length);
+            for (let i = 0; i < group.length; i++) {
+                const g = group[i];
+                jittered.push({
+                    ...g,
+                    consequenceLabel: cLabel,
+                    likelihoodLabel: lLabel,
+                    jitterX: pos[i][0],
+                    jitterY: pos[i][1],
+                    radius: baseRadius
+                });
+            }
+        }
+
+        return jittered;
+    }
+        */
