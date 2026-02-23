@@ -30,6 +30,7 @@ export declare class Visual implements IVisual {
     private pointsG;
     private labelsG;
     private titleG;
+    private subtitleG;
     private xAxisTitleG;
     private yAxisTitleG;
     private getTooltipInfo;

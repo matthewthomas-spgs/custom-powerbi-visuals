@@ -5,6 +5,7 @@
             "essential": true
         }
     ],
+    "suppressDefaultTitle": true,
     "dataRoles": [
         {
             "displayName": "Risk Label",

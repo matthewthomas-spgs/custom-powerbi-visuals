@@ -80,21 +80,22 @@ private tooltipCategoryCols: powerbi.DataViewCategoryColumn[] = [];
     private pointsG!: d3.Selection<SVGGElement, unknown, null, undefined>;
     private labelsG!: d3.Selection<SVGGElement, unknown, null, undefined>;
     private titleG!: d3.Selection<SVGTextElement, unknown, null, undefined>;
+    private subtitleG!: d3.Selection<SVGTextElement, unknown, null, undefined>;
     private xAxisTitleG!: d3.Selection<SVGTextElement, unknown, null, undefined>;
     private yAxisTitleG!: d3.Selection<SVGTextElement, unknown, null, undefined>;
 
     private getTooltipInfo(d: Risk): VisualTooltipDataItem[] {
         const base: VisualTooltipDataItem[] = [
             {
-                displayName: "Risk", 
+                displayName: "Risk Code (Numeric)", 
                 value: d.category ?? "N/A"
             },
             {
-                displayName: "Likelihood", 
+                displayName: "Likelihood Rating", 
                 value: d.likelihoodLabel ?? String(d.likelihoodIdx)
             },
             {
-                displayName: "Consequence", 
+                displayName: "Consequence Rating", 
                 value: d.consequenceLabel ?? String(d.consequenceIdx)
             }
         ];
@@ -160,15 +161,22 @@ private tooltipCategoryCols: powerbi.DataViewCategoryColumn[] = [];
             .attr("class", "chart-title")
             .attr("text-anchor", "middle")
             .attr("font-weight", "bold");
+
+        this.subtitleG = this.svg.append("text")
+            .attr("class", "chart-subtitle")
+            .attr("text-anchor", "middle")
+            .attr("font-style", "italic");
         
         this.xAxisTitleG = this.svg.append("text")
             .attr("class", "axis-title x")
-            .attr("text-anchor", "middle");
+            .attr("text-anchor", "middle")
+            .attr("font-weight", "bold");
 
         this.yAxisTitleG = this.svg.append("text")
             .attr("class", "axis-title y")
             .attr("text-anchor", "middle")
-            .attr("transform", "rotate(-90)");
+            .attr("transform", "rotate(-90)")
+            .attr("font-weight", "bold");
 
         this.data = create_base_matrix();
     }
@@ -409,13 +417,21 @@ private tooltipCategoryCols: powerbi.DataViewCategoryColumn[] = [];
         this.rootG.attr("transform", `translate(${this.margin_left}, ${this.margin_top})`);
 
         const titleText = (this.formattingSettings as any)?.title?.text?.value ?? "Risk Matrix";
+        const subtitleText = "Interactive Heat Map of Risks in manageCompliance";
         const titleFontSize = (this.formattingSettings as any)?.title?.fontSize?.value ?? 20;
+        const subtitleFontSize = 12;
 
         this.titleG
             .text(titleText)
             .attr("x", fullWidth / 2)
             .attr("y", Math.max(20, this.margin_top * 0.6))
             .attr("font-size", `${titleFontSize}px`);
+
+        this.subtitleG
+            .text(subtitleText)
+            .attr("x", fullWidth / 2)
+            .attr("y", Math.max(20, this.margin_top * 0.6) + 15)
+            .attr("font-size", `${subtitleFontSize}px`);
 
         const xAxisTitle = "Consequence";
         const yAxisTitle = "Likelihood";
