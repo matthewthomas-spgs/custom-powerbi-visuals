@@ -5,8 +5,8 @@
         "guid": "riskMatrixE6C2180271CC43D3B13A714F2455D1DE",
         "visualClassName": "Visual",
         "version": "1.0.0.0",
-        "description": "",
-        "supportUrl": "",
+        "description": "This visual can be used to produce a heat map of risks based on likelihood and consequence ratings.",
+        "supportUrl": "https://github.com/matthewthomas-spgs/custom-powerbi-visuals",
         "gitHubUrl": "https://github.com/matthewthomas-spgs/custom-powerbi-visuals"
     },
     "apiVersion": "5.3.0",
