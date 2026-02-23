@@ -7,6 +7,9 @@ export declare class Visual implements IVisual {
     private target;
     private formattingSettingsService;
     private formattingSettings;
+    private tooltipServiceWrapper;
+    private tooltipValueCols;
+    private tooltipCategoryCols;
     private _container;
     private margin_top;
     private margin_bottom;
@@ -29,6 +32,7 @@ export declare class Visual implements IVisual {
     private titleG;
     private xAxisTitleG;
     private yAxisTitleG;
+    private getTooltipInfo;
     constructor(options: VisualConstructorOptions);
     update(options: VisualUpdateOptions): void;
     private clampIndex;

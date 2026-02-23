@@ -13,7 +13,15 @@ import VisualUpdateOptions = powerbi.extensibility.visual.VisualUpdateOptions;
 import IVisual = powerbi.extensibility.visual.IVisual;
 import DataView = powerbi.DataView;
 
+import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
+import { valueFormatter } from "powerbi-visuals-utils-formattingutils";
+
 import { VisualFormattingSettingsModel } from "./settings";
+
+import {
+    createTooltipServiceWrapper,
+    ITooltipServiceWrapper
+} from "powerbi-visuals-utils-tooltiputils";
 
 
 // Tunables (adjust to taste)
@@ -23,8 +31,10 @@ const INNER_PAD_FR  = 2; // how much inner padding (in radii) to keep away from 
 
 interface Risk {
     category: string;
+    risk_name: string;
     consequenceIdx: number; // 1–5
     likelihoodIdx: number;  // 1–5
+    rowIndex?: number;
     selectionId?: powerbi.extensibility.ISelectionId;
     consequenceLabel?: string;
     likelihoodLabel?: string;
@@ -37,6 +47,12 @@ export class Visual implements IVisual {
     private target: HTMLElement;
     private formattingSettingsService: FormattingSettingsService;
     private formattingSettings: VisualFormattingSettingsModel;
+
+    private tooltipServiceWrapper: ITooltipServiceWrapper;
+    private tooltipValueCols: powerbi.DataViewValueColumn[] = [];
+    
+private tooltipCategoryCols: powerbi.DataViewCategoryColumn[] = [];
+
 
     private _container: HTMLDivElement;
 
@@ -68,6 +84,54 @@ export class Visual implements IVisual {
     private xAxisTitleG!: d3.Selection<SVGTextElement, unknown, null, undefined>;
     private yAxisTitleG!: d3.Selection<SVGTextElement, unknown, null, undefined>;
 
+    private getTooltipInfo(d: Risk): VisualTooltipDataItem[] {
+        const base: VisualTooltipDataItem[] = [
+            {
+                displayName: "Risk", 
+                value: d.category ?? "N/A"
+            },
+            {
+                displayName: "Likelihood", 
+                value: d.likelihoodLabel ?? String(d.likelihoodIdx)
+            },
+            {
+                displayName: "Consequence", 
+                value: d.consequenceLabel ?? String(d.consequenceIdx)
+            },
+            {
+                displayName: "Name",
+                value: d.risk_name
+            }
+        ];
+
+        // append additional fields
+        /*
+        if (this.tooltipValueCols?.length && d.rowIndex != null) {
+            for (const column of this.tooltipValueCols) {
+                const raw = column.values?.[d.rowIndex];
+                base.push({
+                    displayName: column.source?.displayName || column.source?.queryName || "Tooltip",
+                    value: raw == null ? "" : String(raw)
+                });
+            }
+        }*/
+            
+        if (this.tooltipCategoryCols?.length && d.rowIndex != null) {
+            for (const col of this.tooltipCategoryCols) {
+            const raw = col.values?.[d.rowIndex];
+            const displayName = col.source?.displayName || col.source?.queryName || "Tooltip";
+            const formatter = valueFormatter.create({ format: col.source?.format });
+            base.push({
+                displayName,
+                value: raw == null ? "" : formatter.format(raw)
+            });
+            }
+        }
+
+
+        return base;
+    }
+
     constructor(options: VisualConstructorOptions) {
         this.target = options.element;
         this.formattingSettingsService = new FormattingSettingsService();
@@ -75,6 +139,8 @@ export class Visual implements IVisual {
         this.host = options.host;
         this.selectionManager = this.host.createSelectionManager();
         this.colourPalette = this.host.colorPalette;
+
+        this.tooltipServiceWrapper = createTooltipServiceWrapper(this.host.tooltipService, options.element);
 
         this._container = document.createElement("div");
         this._container.style.position = "relative";
@@ -123,6 +189,7 @@ export class Visual implements IVisual {
         this.extractData(options.dataViews[0]);
 
         this.renderChart(options);
+        
     }
 
     // clamp indices to keep within bounds
@@ -135,43 +202,62 @@ export class Visual implements IVisual {
     }
 
     private extractData(dataView: DataView) {
+
+        /*
         const table = dataView.table;
         if (!table || !table.rows || !table.columns) {
             this.risks = [];
             return;
         };
 
-        const labelIdx = table.columns.findIndex(c => c.roles["riskLabel"]);
-        const consequenceIdx = table.columns.findIndex(c => c.roles["riskConsequenceRating"]);
-        const likelihoodIdx = table.columns.findIndex(c => c.roles["riskLikelihoodRating"]);
+        */
 
-        if (labelIdx < 0 || consequenceIdx < 0 || likelihoodIdx < 0) {
-            this.risks = [];
-            return;
-        }
+        const catView = dataView.categorical;
+        if(!catView?.categories?.length || !catView.values) return;
 
-        // selectionIdBuilder -> FOR FUTURE DEVELOPMENT
-        // cross-filter -> change to categorical mapping
-        const baseSelectionId = this.host.createSelectionIdBuilder().createSelectionId();
+        //const categoryColumn = catView.categories[0];
+        const values = catView.values;
+        const categories = catView.categories;
+        const categoryColumn = categories[0];
 
-        this.risks = table.rows.map(row => {
-            
-            const cIdx = this.clampIndex(row[consequenceIdx]);
-            const lIdx = this.clampIndex(row[likelihoodIdx]);
+        //this.tooltipValueCols = values.filter(v => v.source?.roles?.["tooltips"]);
+        
+        this.tooltipCategoryCols = categories.filter((c, idx) => idx > 0 && c?.source?.roles?.["tooltips"]);
+
+        (this as any).categoryLength = categoryColumn?.values?.length ?? 0;
+
+
+        //const labelIdx = table.columns.findIndex(c => c.roles["riskLabel"]);
+        const consequenceIdx = values.findIndex(c => c.source.roles["riskConsequenceRating"]);
+        const likelihoodIdx = values.findIndex(c => c.source.roles["riskLikelihoodRating"]);
+
+        this.risks = categoryColumn.values.map((label, idx) => {
+            const consequence = values[consequenceIdx]?.values[idx];
+            const likelihood = values[likelihoodIdx]?.values[idx];
+
+            const selectionId = this.host.createSelectionIdBuilder()
+                .withCategory(
+                categoryColumn, idx
+                )
+                .createSelectionId();
+
+            const cIdx = this.clampIndex(consequence);
+            const lIdx = this.clampIndex(likelihood);
 
             if (cIdx == null || lIdx == null) return null;
 
-            const category = row[labelIdx] != null ? String(row[labelIdx]): "N/A";
-
             return {
-                category,
+                category: label != null ? String(label) : "N/A",
+                risk_name: "placeholder",
                 consequenceIdx: cIdx,
                 likelihoodIdx: lIdx,
-                selectionId: baseSelectionId
+                selectionId,
+                rowIndex: idx
             } as Risk;
         }).filter(
-            (r): r is Risk => r != null
+            (r): r is Risk => !!r
         );
+            
     }
 
     private consequenceLabelFromIndex(key: number): string | null {
@@ -475,7 +561,7 @@ export class Visual implements IVisual {
             .selectAll<SVGCircleElement, Risk>("circle.risk-point")
             .data(jitteredRisks, (d: any) => `${d.category}-${d.consequenceIdx}-${d.likelihoodIdx}`);
 
-        points.join(
+        const joinedPoints = points.join(
             enter => enter.append("circle")
                 .attr("class", "risk-point")
                 .attr("r", d => d.radius! + 8)
@@ -492,18 +578,21 @@ export class Visual implements IVisual {
                     const multi = event.ctrlKey || event.metaKey;
                     this.selectionManager.select(d.selectionId!, multi);
                     event.stopPropagation();
-                })
-                .append("title")
-                .text(d =>
-                    `Risk: ${d.category}
-                    Likelihood: ${d.likelihoodLabel}
-                    Consequence: ${d.consequenceLabel}`
-                ),
+                }),
             update => update
-                .attr("r", d => d.radius!)
+                .attr("r", d => d.radius! + 8)
                 .attr("cx", d => x(d.consequenceLabel!)! + x.bandwidth() / 2 + (d.jitterX ?? 0))
                 .attr("cy", d => y(d.likelihoodLabel!)! + y.bandwidth() / 2 + (d.jitterY ?? 0)),
             exit => exit.remove()
+        );
+
+        joinedPoints.select("title").remove();
+
+        this.tooltipServiceWrapper.addTooltip<Risk>(
+            joinedPoints,
+            (d) => this.getTooltipInfo(d),
+            (d) => d.selectionId,
+            true
         );
 
         const nominalFontSize = Math.min(x.bandwidth(), y.bandwidth()) * 0.28;

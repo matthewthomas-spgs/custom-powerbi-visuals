@@ -8,13 +8,13 @@
     "dataRoles": [
         {
             "displayName": "Risk Label",
-            "name": "riskLabel",
+            "name": "category",
             "kind": "Grouping"
         },
         {
             "displayName": "Consequence Rating",
             "name": "riskConsequenceRating",
-            "kind": "Grouping",
+            "kind": "Measure",
             "requiredTypes": [
                 {
                     "integer": true
@@ -24,36 +24,65 @@
         {
             "displayName": "Likelihood Rating",
             "name": "riskLikelihoodRating",
-            "kind": "Grouping",
+            "kind": "Measure",
             "requiredTypes": [
                 {
                     "integer": true
                 }
             ]
+        },
+        {
+            "displayName": "Risk Name",
+            "name": "SelectedRiskName",
+            "kind": "Measure",
+            "requiredTypes": [
+                {
+                    "text": true
+                }
+            ]
+        },
+        {
+            "name": "tooltips",
+            "kind": "Grouping",
+            "displayName": "Tooltips"
         }
     ],
     "dataViewMappings": [
         {
-           "table": {
-            "rows": {
-                "select": [
-                    {
-                        "bind": {
-                            "to": "riskLabel"
+           "categorical": {
+                "categories": {
+                    "select": [
+                        {
+                            "for": {
+                                "in": "category"
+                            }
+                        }, 
+                        {
+                            "for": {
+                                "in": "tooltips"
+                            }
                         }
-                    },
-                    {
-                        "bind": {
-                            "to": "riskConsequenceRating"
+                    ]
+                },
+                "values": {
+                    "select": [
+                        {
+                            "bind": {
+                                "to": "riskConsequenceRating"
+                            }
+                        },
+                        {
+                            "bind": {
+                                "to": "riskLikelihoodRating"
+                            }
+                        },
+                        {
+                            "bind": {
+                                "to": "SelectedRiskName"
+                            }
                         }
-                    },
-                    {
-                        "bind": {
-                            "to": "riskLikelihoodRating"
-                        }
-                    }
-                ]
-            }
+                    ]
+                }
            }
         }
     ]
