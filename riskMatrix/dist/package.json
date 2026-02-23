@@ -1,0 +1,17 @@
+{
+		"version": "1.0.0.0",
+		"author": {"name":"Matthew Thomas","email":"matthew.thomas@stpauls.nsw.edu.au"},
+		"resources": [
+			{
+				"resourceId": "rId0",
+				"sourceType": 5,
+				"file": "resources/riskMatrixE6C2180271CC43D3B13A714F2455D1DE.pbiviz.json"
+			}
+		],
+		"visual": {"name":"riskMatrix","displayName":"RiskMatrix","guid":"riskMatrixE6C2180271CC43D3B13A714F2455D1DE","visualClassName":"Visual","version":"1.0.0.0","description":"This visual can be used to produce a heat map of risks based on likelihood and consequence ratings.","supportUrl":"https://github.com/matthewthomas-spgs/custom-powerbi-visuals","gitHubUrl":"https://github.com/matthewthomas-spgs/custom-powerbi-visuals"},
+		"metadata": {
+			"pbivizjson": {
+				"resourceId": "rId0"
+			}
+		}
+	}
