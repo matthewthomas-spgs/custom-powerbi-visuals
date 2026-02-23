@@ -469,7 +469,7 @@ export class Visual implements IVisual {
 
         const jitteredRisks = this.calculateJitter(x, y, width, height);
 
-        const pointColour = (this.formattingSettings as any)?.points?.color?.value ?? "#1f77b4";
+        const pointColour = (this.formattingSettings as any)?.points?.color?.value ?? "#17457a";
 
         const points = this.pointsG
             .selectAll<SVGCircleElement, Risk>("circle.risk-point")
@@ -478,11 +478,13 @@ export class Visual implements IVisual {
         points.join(
             enter => enter.append("circle")
                 .attr("class", "risk-point")
-                .attr("r", d => d.radius!)
+                .attr("r", d => d.radius! + 8)
                 .attr("cx", d => x(d.consequenceLabel!)! + x.bandwidth() / 2 + (d.jitterX ?? 0))
                 .attr("cy", d => y(d.likelihoodLabel!)! + y.bandwidth() / 2 + (d.jitterY ?? 0))
                 .attr("fill", pointColour)
                 .attr("opacity", 0.9)
+                .attr("stroke", "#24ae4b")
+                .attr("stroke-width", "2")
                 .style("cursor", "pointer")
                 .on("click", (event, d) => {
                     // NOTE: selectionId is not tied to a category due to table mapping.
